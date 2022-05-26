@@ -120,41 +120,41 @@ func invoke(w http.ResponseWriter, r *http.Request) {
 	group, ok := groupMap[groupId]
 	rMap := map[string]string{}
 	if ok {
-		if len(group.clients) < 1 {
+		if len(group.clients) == 0 {
 			rMap["msg"] = "no device online"
-			return
-		}
-		if clientId == "" {
-			clientId = group.getClient()
-		}
-		rMap["clientId"] = clientId
-		cl, ok := group.clientMap[clientId]
-		if ok {
-			if action != "" {
-				req_id := getUuid()
-				req_chan := make(chan []byte, 1)
-				cl.channelMap[req_id] = req_chan
-				reqMap := map[string]string{}
-				reqMap["__sekiro_seq__"] = req_id
-				parseValues(reqMap, r.URL.Query())
-				parseValues(reqMap, r.Form)
-				cl.conn.WriteMessage(websocket.TextMessage, []byte(MapToJson(reqMap)))
-				defer delete(cl.channelMap, req_id)
+		} else {
+			if clientId == "" {
+				clientId = group.getClient()
+			}
+			cl, ok := group.clientMap[clientId]
+			if ok {
+				if action != "" {
+					req_id := getUuid()
+					req_chan := make(chan []byte, 1)
+					cl.channelMap[req_id] = req_chan
+					reqMap := map[string]string{}
+					reqMap["__sekiro_seq__"] = req_id
+					parseValues(reqMap, r.URL.Query())
+					parseValues(reqMap, r.Form)
+					cl.conn.WriteMessage(websocket.TextMessage, []byte(MapToJson(reqMap)))
+					defer delete(cl.channelMap, req_id)
 
-				select {
-				case p := <-req_chan: // 收到消息返回给客户端
-					//fmt.Println("write:" + string(p))
-					w.Write(p)
-					return
-				case <-time.After(time.Second * time.Duration(invokeTimeout)):
-					rMap["msg"] = "调用超时"
+					select {
+					case p := <-req_chan: // 收到消息返回给客户端
+						//fmt.Println("write:" + string(p))
+						w.Write(p)
+						return
+					case <-time.After(time.Second * time.Duration(invokeTimeout)):
+						rMap["msg"] = "调用超时"
+					}
+				} else {
+					rMap["msg"] = "请检查action是否正确"
 				}
 			} else {
-				rMap["msg"] = "请检查action是否正确"
+				rMap["msg"] = "没有这个client"
 			}
-		} else {
-			rMap["msg"] = "没有这个client"
 		}
+
 	} else {
 		rMap["msg"] = "请检查groupId是否正确"
 	}
