@@ -1,0 +1,2 @@
+# gsekiro
+go sekiro server
