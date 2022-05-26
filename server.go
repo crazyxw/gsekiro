@@ -96,7 +96,7 @@ func register(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			break
 		}
-		log.Println("recv:", string(p))
+		log.Println("group:"+groupId+" clientId"+clientId+" recv:", string(p))
 		var sreq SekiroRequest
 		parseErr := json.Unmarshal(p, &sreq)
 		if parseErr != nil {
