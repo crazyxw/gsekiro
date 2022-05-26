@@ -18,9 +18,9 @@ const defaultInvokeTimeout = 3
 var UP = websocket.Upgrader{
 	ReadBufferSize:  4096,
 	WriteBufferSize: 4096,
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
+	//CheckOrigin: func(r *http.Request) bool {
+	//	return true
+	//},
 }
 
 type Group struct {
@@ -90,13 +90,13 @@ func register(w http.ResponseWriter, r *http.Request) {
 		log.Println("设备id已注册, group:" + groupId + " clientId:" + clientId)
 		return
 	}
-	log.Println("注册成功: group:" + groupId + " clientId" + clientId)
+	log.Println("注册成功: group:" + groupId + " clientId:" + clientId)
 	for {
 		_, p, err := conn.ReadMessage()
 		if err != nil {
 			break
 		}
-		log.Println("group:"+groupId+" clientId"+clientId+" recv:", string(p))
+		log.Println("group:"+groupId+" clientId:"+clientId+" recv:", string(p))
 		var sreq SekiroRequest
 		parseErr := json.Unmarshal(p, &sreq)
 		if parseErr != nil {
@@ -235,11 +235,19 @@ func invoke(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(MapToJson(rMap)))
 }
 
+func jsDemo(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "example/js/demo.html")
+}
+
 func main() {
 	http.HandleFunc("/", index)
+	http.HandleFunc("/jsDemo", jsDemo)
 	http.HandleFunc("/business-demo/register", register)
 	http.HandleFunc("/business-demo/invoke", invoke)
 	http.HandleFunc("/business-demo/clientQueue", getClients)
 	http.HandleFunc("/business-demo/groupList", getGroups)
-	http.ListenAndServe(":5612", nil)
+	err := http.ListenAndServe(":5612", nil)
+	if err != nil {
+		panic(err)
+	}
 }
