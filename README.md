@@ -7,5 +7,7 @@
 ```bash
 $ go run *.go
 ```
-接下来浏览器打开 http://127.0.0.1:5612/jsDemo
-你将会在控制台看到client连接信息
+接下来浏览器打开 http://127.0.0.1:5612/jsDemo  
+你将会在控制台看到client连接信息  
+再访问http://127.0.0.1:5612/business-demo/invoke?action=clientTime&group=aaa
+就可以调用client上对应action的函数，并返回相应内容。
