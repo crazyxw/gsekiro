@@ -105,7 +105,6 @@ func register(w http.ResponseWriter, r *http.Request) {
 		if sreq.ReqId != "" {
 			if reqChan, ok := group.clientMap[clientId].channelMap[sreq.ReqId]; ok {
 				reqChan <- p
-				//log.Println("成功拿到结果:" + string(p))
 			} else {
 				log.Println("对话已结束" + sreq.ReqId)
 			}
