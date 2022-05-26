@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
-	"github.com/tidwall/gjson"
 	"io"
 	"log"
 	"net/http"
@@ -33,6 +32,10 @@ type Client struct {
 	action     string
 	conn       *websocket.Conn
 	channelMap map[string]chan []byte
+}
+
+type SekiroRequest struct {
+	ReqId string `json:"__sekiro_seq__"`
 }
 
 var groupMap = map[string]*Group{}
@@ -93,13 +96,18 @@ func register(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			break
 		}
-		req_id := gjson.GetBytes(p, "__sekiro_seq__")
-		if req_id.Exists() {
-			if reqChan, ok := group.clientMap[clientId].channelMap[req_id.String()]; ok {
+		log.Println("recv:", string(p))
+		var sreq SekiroRequest
+		parseErr := json.Unmarshal(p, &sreq)
+		if parseErr != nil {
+			continue
+		}
+		if sreq.ReqId != "" {
+			if reqChan, ok := group.clientMap[clientId].channelMap[sreq.ReqId]; ok {
 				reqChan <- p
-				log.Println("成功拿到结果:" + string(p))
+				//log.Println("成功拿到结果:" + string(p))
 			} else {
-				log.Println("对话已结束" + req_id.String())
+				log.Println("对话已结束" + sreq.ReqId)
 			}
 		}
 	}
@@ -209,8 +217,8 @@ func invoke(w http.ResponseWriter, r *http.Request) {
 				defer delete(cl.channelMap, req_id)
 
 				select {
-				case p := <-req_chan:
-					fmt.Println("write:" + string(p))
+				case p := <-req_chan: // 收到消息返回给客户端
+					//fmt.Println("write:" + string(p))
 					w.Write(p)
 					return
 				case <-time.After(time.Second * time.Duration(invokeTimeout)):
