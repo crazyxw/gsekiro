@@ -1,11 +1,8 @@
 package main
 
 import (
-	"crypto/rand"
 	"encoding/json"
-	"fmt"
 	"github.com/gorilla/websocket"
-	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -23,49 +20,11 @@ var UP = websocket.Upgrader{
 	//},
 }
 
-type Group struct {
-	clients   []string
-	clientMap map[string]*Client
-}
-
-type Client struct {
-	action     string
-	conn       *websocket.Conn
-	channelMap map[string]chan []byte
-}
-
 type SekiroRequest struct {
 	ReqId string `json:"__sekiro_seq__"`
 }
 
 var groupMap = map[string]*Group{}
-
-func (g *Group) removeClient(clientId string) {
-	for i := 0; i < len(g.clients); i++ {
-		if g.clients[i] == clientId {
-			g.clients = append(g.clients[:i], g.clients[i+1:]...)
-			g.clientMap[clientId].conn.Close()
-			delete(g.clientMap, clientId)
-			break
-		}
-	}
-}
-
-func (g *Group) addClient(conn *websocket.Conn, clientId string) bool {
-	if g.clientMap == nil {
-		g.clientMap = map[string]*Client{}
-	}
-	if _, ok := g.clientMap[clientId]; ok {
-		return false
-	} else {
-		g.clients = append(g.clients, clientId)
-		g.clientMap[clientId] = &Client{
-			conn:       conn,
-			channelMap: map[string]chan []byte{},
-		}
-		return true
-	}
-}
 
 func register(w http.ResponseWriter, r *http.Request) {
 	reqParams := r.URL.Query()
@@ -118,13 +77,6 @@ func index(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Hello, This is a websocket rpc service!"))
 }
 
-func getClientByFiFo(group *Group) string {
-	client := group.clients[0]
-	group.clients = group.clients[1:]
-	group.clients = append(group.clients, client)
-	return client
-}
-
 func getGroups(w http.ResponseWriter, r *http.Request) {
 	var result []string
 	for group := range groupMap {
@@ -150,32 +102,6 @@ func getClients(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.Write([]byte("当前group不存在"))
 	}
-
-}
-
-func getUuid() string {
-	b := make([]byte, 16)
-	io.ReadFull(rand.Reader, b)
-	b[6] = (b[6] & 0x0f) | 0x40
-	b[8] = (b[8] & 0x3f) | 0x80
-	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
-}
-
-func MapToJson(param map[string]string) string {
-	dataType, _ := json.Marshal(param)
-	dataString := string(dataType)
-	return dataString
-}
-
-func parseValues(m1 map[string]string, values map[string][]string) {
-	for i := range values {
-		vs := values[i]
-		if len(vs) == 0 {
-			m1[i] = ""
-		} else {
-			m1[i] = vs[0]
-		}
-	}
 }
 
 func invoke(w http.ResponseWriter, r *http.Request) {
@@ -199,7 +125,7 @@ func invoke(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if clientId == "" {
-			clientId = getClientByFiFo(group)
+			clientId = group.getClient()
 		}
 		rMap["clientId"] = clientId
 		cl, ok := group.clientMap[clientId]
