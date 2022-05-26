@@ -107,7 +107,7 @@ func register(w http.ResponseWriter, r *http.Request) {
 	log.Println("服务关闭")
 }
 
-func helloWorld(w http.ResponseWriter, r *http.Request) {
+func index(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Hello, This is a websocket rpc service!"))
 }
 
@@ -171,7 +171,7 @@ func parseValues(m1 map[string]string, values map[string][]string) {
 	}
 }
 
-func callAction(w http.ResponseWriter, r *http.Request) {
+func invoke(w http.ResponseWriter, r *http.Request) {
 	params := r.URL.Query()
 	action := params.Get("action")
 	groupId := params.Get("group")
@@ -229,9 +229,9 @@ func callAction(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	http.HandleFunc("/", helloWorld)
+	http.HandleFunc("/", index)
 	http.HandleFunc("/business-demo/register", register)
-	http.HandleFunc("/business-demo/invoke", callAction)
+	http.HandleFunc("/business-demo/invoke", invoke)
 	http.HandleFunc("/business-demo/clientQueue", getClients)
 	http.HandleFunc("/business-demo/groupList", getGroups)
 	http.ListenAndServe(":5612", nil)
