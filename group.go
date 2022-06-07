@@ -1,6 +1,9 @@
 package main
 
-import "github.com/gorilla/websocket"
+import (
+	"github.com/gorilla/websocket"
+	"sync"
+)
 
 type Group struct {
 	clients   []string
@@ -27,8 +30,9 @@ func (group *Group) addClient(conn *websocket.Conn, clientId string) bool {
 	} else {
 		group.clients = append(group.clients, clientId)
 		group.clientMap[clientId] = &Client{
-			conn:       conn,
-			channelMap: map[string]chan []byte{},
+			conn: conn,
+			//channelMap: map[string]chan []byte{},
+			channelMap: sync.Map{},
 		}
 		return true
 	}
