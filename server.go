@@ -3,12 +3,26 @@ package main
 import (
 	"encoding/json"
 	"github.com/gorilla/websocket"
+	"gopkg.in/natefinch/lumberjack.v2"
+	"io"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 )
+
+func init() {
+	lumberLogger := &lumberjack.Logger{
+		Filename:  "./logs/sekiro-server.log",
+		MaxAge:    5,
+		Compress:  true,
+		LocalTime: true,
+	}
+	multiWriter := io.MultiWriter(os.Stdout, lumberLogger)
+	log.SetOutput(multiWriter)
+}
 
 const defaultInvokeTimeout = 3
 
