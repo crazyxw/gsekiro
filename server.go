@@ -141,8 +141,10 @@ func invoke(w http.ResponseWriter, r *http.Request) {
 					reqMap["__sekiro_seq__"] = req_id
 					parseValues(reqMap, r.URL.Query())
 					parseValues(reqMap, r.Form)
+					cl.rwLock.Lock()
 					cl.conn.WriteMessage(websocket.TextMessage, []byte(MapToJson(reqMap)))
 					//defer cl.channelMap.Delete(req_id)
+					cl.rwLock.Unlock()
 
 					select {
 					case p := <-req_chan: // 收到消息返回给客户端

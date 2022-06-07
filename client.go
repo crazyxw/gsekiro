@@ -7,6 +7,6 @@ import (
 
 type Client struct {
 	conn *websocket.Conn
-	//channelMap map[string]chan []byte
 	channelMap sync.Map
+	rwLock     sync.RWMutex
 }
