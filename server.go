@@ -62,7 +62,6 @@ func register(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		if sreq.ReqId != "" {
-			//if reqChan, ok := group.clientMap[clientId].channelMap[sreq.ReqId]; ok {
 			if reqChan, ok := group.clientMap[clientId].channelMap.LoadAndDelete(sreq.ReqId); ok {
 				chain, ok := reqChan.(chan []byte)
 				if ok {
@@ -135,7 +134,6 @@ func invoke(w http.ResponseWriter, r *http.Request) {
 				if action != "" {
 					req_id := getUuid()
 					req_chan := make(chan []byte, 1)
-					//cl.channelMap[req_id] = req_chan
 					cl.channelMap.Store(req_id, req_chan)
 					reqMap := map[string]string{}
 					reqMap["__sekiro_seq__"] = req_id
@@ -143,12 +141,10 @@ func invoke(w http.ResponseWriter, r *http.Request) {
 					parseValues(reqMap, r.Form)
 					cl.rwLock.Lock()
 					cl.conn.WriteMessage(websocket.TextMessage, []byte(MapToJson(reqMap)))
-					//defer cl.channelMap.Delete(req_id)
 					cl.rwLock.Unlock()
 
 					select {
 					case p := <-req_chan: // 收到消息返回给客户端
-						//fmt.Println("write:" + string(p))
 						w.Write(p)
 						return
 					case <-time.After(time.Second * time.Duration(invokeTimeout)):
