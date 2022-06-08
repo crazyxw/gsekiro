@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"github.com/gorilla/websocket"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"io"
@@ -42,10 +41,6 @@ var UP = websocket.Upgrader{
 	//},
 }
 
-type SekiroRequest struct {
-	ReqId string `json:"__sekiro_seq__"`
-}
-
 var groupMap = map[string]*Group{}
 
 func register(w http.ResponseWriter, r *http.Request) {
@@ -68,34 +63,29 @@ func register(w http.ResponseWriter, r *http.Request) {
 
 	if !group.addClient(conn, clientId) {
 		conn.Close()
-		log.Println("设备id已注册, group:" + groupId + " clientId:" + clientId)
+		log.Printf("设备id已注册, group:group:%s clientId: %s \n", groupId, clientId)
 		return
 	}
-	log.Println("注册成功: group:" + groupId + " clientId:" + clientId)
+	log.Printf("注册成功: group:%s clientId: %s \n", groupId, clientId)
 	for {
-		_, p, err := conn.ReadMessage()
+		_, message, err := conn.ReadMessage()
 		if err != nil {
 			break
 		}
-		log.Println("group:"+groupId+" clientId:"+clientId+" recv:", string(p))
-		var sreq SekiroRequest
-		parseErr := json.Unmarshal(p, &sreq)
-		if parseErr != nil {
-			continue
-		}
-		if sreq.ReqId != "" {
-			if reqChan, ok := group.clientMap[clientId].channelMap.LoadAndDelete(sreq.ReqId); ok {
-				chain, ok := reqChan.(chan []byte)
-				if ok {
-					chain <- p
-				}
-			} else {
-				log.Println("对话已结束" + sreq.ReqId)
+		msg := string(message)
+		log.Printf("group: %s clientId: %s recv: %s \n", groupId, clientId, msg)
+		reqId := msg[:36]
+		if reqChan, ok := group.clientMap[clientId].channelMap.LoadAndDelete(reqId); ok {
+			chain, ok := reqChan.(chan []byte)
+			if ok {
+				chain <- message[36:]
 			}
+		} else {
+			log.Println("没有找到此reqId:" + reqId)
 		}
 	}
 	group.removeClient(clientId)
-	log.Println("服务关闭")
+	log.Printf("服务已关闭: %s, %s\n", groupId, clientId)
 }
 
 func index(w http.ResponseWriter, r *http.Request) {
@@ -158,16 +148,15 @@ func invoke(w http.ResponseWriter, r *http.Request) {
 					req_chan := make(chan []byte, 1)
 					cl.channelMap.Store(req_id, req_chan)
 					reqMap := map[string]string{}
-					reqMap["__sekiro_seq__"] = req_id
 					parseValues(reqMap, r.URL.Query())
 					parseValues(reqMap, r.Form)
 					cl.rwLock.Lock()
-					cl.conn.WriteMessage(websocket.TextMessage, []byte(MapToJson(reqMap)))
+					cl.conn.WriteMessage(websocket.TextMessage, []byte(req_id+MapToJson(reqMap)))
 					cl.rwLock.Unlock()
 
 					select {
-					case p := <-req_chan: // 收到消息返回给客户端
-						w.Write(p)
+					case msg := <-req_chan: // 收到消息返回给客户端
+						w.Write(msg)
 						return
 					case <-time.After(time.Second * time.Duration(invokeTimeout)):
 						rMap["msg"] = "调用超时"
