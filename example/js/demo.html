@@ -236,7 +236,7 @@
             }
             return (S4() + S4() + "-" + S4() + "-" + S4() + "-" + S4() + "-" + S4() + S4() + S4());
         }
-        var client = new SekiroClient("ws://127.0.0.1:5612/business-demo/register?vkey=test&group=aaa&clientId="+guid());
+        var client = new SekiroClient("ws://127.0.0.1:5612/api/register?vkey=test&group=aaa&clientId="+guid());
         client.registerAction("clientTime", function (request, resolve, reject) {
             resolve("SekiroTest：" + new Date());
         });

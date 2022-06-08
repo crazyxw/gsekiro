@@ -200,10 +200,10 @@ func main() {
 	mux.HandleFunc("/", index)
 	mux.HandleFunc("/jsDemo", jsDemo)
 	mux.Use(middlewares...) // 下面的接口都经过中间件
-	mux.HandleFunc("/business-demo/register", register)
-	mux.HandleFunc("/business-demo/invoke", invoke)
-	mux.HandleFunc("/business-demo/clientQueue", getClients)
-	mux.HandleFunc("/business-demo/groupList", getGroups)
+	mux.HandleFunc("/api/register", register)
+	mux.HandleFunc("/api/invoke", invoke)
+	mux.HandleFunc("/api/clientQueue", getClients)
+	mux.HandleFunc("/api/groupList", getGroups)
 
 	server := &http.Server{
 		Addr:    config.Web.Port,
