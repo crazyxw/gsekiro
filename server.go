@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"github.com/gorilla/websocket"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"io"
@@ -41,6 +42,10 @@ var UP = websocket.Upgrader{
 	//},
 }
 
+type SekiroRequest struct {
+	ReqId string `json:"__sekiro_seq__"`
+}
+
 var groupMap = map[string]*Group{}
 
 func register(w http.ResponseWriter, r *http.Request) {
@@ -72,16 +77,21 @@ func register(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			break
 		}
-		msg := string(message)
-		log.Printf("group: %s clientId: %s recv: %s \n", groupId, clientId, msg)
-		reqId := msg[:36]
-		if reqChan, ok := group.clientMap[clientId].channelMap.LoadAndDelete(reqId); ok {
-			chain, ok := reqChan.(chan []byte)
-			if ok {
-				chain <- message[36:]
+		log.Printf("group:%s clientId %s recv:%s \n", groupId, clientId, string(message))
+		var sreq SekiroRequest
+		parseErr := json.Unmarshal(message, &sreq)
+		if parseErr != nil {
+			continue
+		}
+		if sreq.ReqId != "" {
+			if reqChan, ok := group.clientMap[clientId].channelMap.LoadAndDelete(sreq.ReqId); ok {
+				chain, ok := reqChan.(chan []byte)
+				if ok {
+					chain <- message
+				}
+			} else {
+				log.Println("没有找到此reqId:" + sreq.ReqId)
 			}
-		} else {
-			log.Println("没有找到此reqId:" + reqId)
 		}
 	}
 	group.removeClient(clientId)
@@ -148,10 +158,11 @@ func invoke(w http.ResponseWriter, r *http.Request) {
 					req_chan := make(chan []byte, 1)
 					cl.channelMap.Store(req_id, req_chan)
 					reqMap := map[string]string{}
+					reqMap["__sekiro_seq__"] = req_id
 					parseValues(reqMap, r.URL.Query())
 					parseValues(reqMap, r.Form)
 					cl.rwLock.Lock()
-					cl.conn.WriteMessage(websocket.TextMessage, []byte(req_id+MapToJson(reqMap)))
+					cl.conn.WriteMessage(websocket.TextMessage, []byte(MapToJson(reqMap)))
 					cl.rwLock.Unlock()
 
 					select {
