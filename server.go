@@ -6,6 +6,7 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 	"io"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"strconv"
@@ -22,16 +23,18 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	defaultInvokeTimeout = config.Web.InvokeTimeout
+	defaultInvokeTimeout = int(math.Max(float64(config.Web.InvokeTimeout), 3))
 	vKey = config.Web.VKey
-	lumberLogger := &lumberjack.Logger{
-		Filename:  config.Log.Filename,
-		MaxAge:    config.Log.MaxAge,
-		Compress:  true,
-		LocalTime: true,
+	if config.Log.Filename != "" {
+		lumberLogger := &lumberjack.Logger{
+			Filename:  config.Log.Filename,
+			MaxAge:    config.Log.MaxAge,
+			Compress:  true,
+			LocalTime: true,
+		}
+		multiWriter := io.MultiWriter(os.Stdout, lumberLogger)
+		log.SetOutput(multiWriter)
 	}
-	multiWriter := io.MultiWriter(os.Stdout, lumberLogger)
-	log.SetOutput(multiWriter)
 }
 
 var UP = websocket.Upgrader{
