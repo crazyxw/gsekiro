@@ -199,8 +199,8 @@ func main() {
 	mux := NewMyMux()
 	mux.HandleFunc("/", index)
 	mux.HandleFunc("/jsDemo", jsDemo)
-	mux.HandleFunc("/business-demo/register", register)
 	mux.Use(middlewares...) // 下面的接口都经过中间件
+	mux.HandleFunc("/business-demo/register", register)
 	mux.HandleFunc("/business-demo/invoke", invoke)
 	mux.HandleFunc("/business-demo/clientQueue", getClients)
 	mux.HandleFunc("/business-demo/groupList", getGroups)
