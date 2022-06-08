@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 )
@@ -12,9 +13,9 @@ func VerifySignMiddleware(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		// 签名校验
 		reqParams := request.URL.Query()
-		fmt.Println("收到请求", request.URL.String())
 		var vkey = reqParams.Get("vkey")
 		if vKey != "" && vkey != vKey {
+			log.Println("签名验证失败:" + request.URL.String())
 			writer.Write([]byte("签名有误"))
 			return
 		}
