@@ -85,7 +85,7 @@ func register(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	group.removeClient(clientId)
-	log.Printf("服务已关闭: %s, %s\n", groupId, clientId)
+	log.Printf("服务已关闭: group:%s, clientId:%s\n", groupId, clientId)
 }
 
 func index(w http.ResponseWriter, r *http.Request) {
