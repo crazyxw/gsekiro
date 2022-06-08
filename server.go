@@ -13,18 +13,26 @@ import (
 	"time"
 )
 
+var defaultInvokeTimeout int
+var vKey string
+var config Config
+
 func init() {
+	err := config.loadFromFile()
+	if err != nil {
+		panic(err)
+	}
+	defaultInvokeTimeout = config.Web.InvokeTimeout
+	vKey = config.Web.VKey
 	lumberLogger := &lumberjack.Logger{
-		Filename:  "./logs/sekiro-server.log",
-		MaxAge:    5,
+		Filename:  config.Log.Filename,
+		MaxAge:    config.Log.MaxAge,
 		Compress:  true,
 		LocalTime: true,
 	}
 	multiWriter := io.MultiWriter(os.Stdout, lumberLogger)
 	log.SetOutput(multiWriter)
 }
-
-const defaultInvokeTimeout = 3
 
 var UP = websocket.Upgrader{
 	ReadBufferSize:  4096,
@@ -183,13 +191,25 @@ func jsDemo(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	http.HandleFunc("/", index)
-	http.HandleFunc("/jsDemo", jsDemo)
-	http.HandleFunc("/business-demo/register", register)
-	http.HandleFunc("/business-demo/invoke", invoke)
-	http.HandleFunc("/business-demo/clientQueue", getClients)
-	http.HandleFunc("/business-demo/groupList", getGroups)
-	err := http.ListenAndServe(":5612", nil)
+	middlewares := []Middleware{
+		VerifySignMiddleware,
+		//MetricMiddleware,
+	}
+
+	mux := NewMyMux()
+	mux.HandleFunc("/", index)
+	mux.HandleFunc("/jsDemo", jsDemo)
+	mux.HandleFunc("/business-demo/register", register)
+	mux.Use(middlewares...) // 下面的接口都经过中间件
+	mux.HandleFunc("/business-demo/invoke", invoke)
+	mux.HandleFunc("/business-demo/clientQueue", getClients)
+	mux.HandleFunc("/business-demo/groupList", getGroups)
+
+	server := &http.Server{
+		Addr:    config.Web.Port,
+		Handler: mux,
+	}
+	err := server.ListenAndServe()
 	if err != nil {
 		panic(err)
 	}

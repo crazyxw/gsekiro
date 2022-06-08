@@ -1,0 +1,8 @@
+web:
+  vKey: "test"
+  invokeTimeout: 3
+  port: ":5612"
+
+log:
+  filename: "./logs/sekiro-server.log"
+  maxAge: 5
