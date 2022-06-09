@@ -15,7 +15,21 @@ $ go run *.go
 你将会在控制台看到client连接信息  
 
 ### [2.Java项目接入](https://github.com/crazyxw/SekiroWebSocketDemo)
+```java
+public class QuickStart {
 
+    public static void main(String[] args) throws URISyntaxException {
+        SekiroWebSocketClient webSocketClient = new SekiroWebSocketClient(new URI("ws://127.0.0.1:5612/api/register?group=aaa&clientId=java01&vkey=test"));
+        webSocketClient.registerSekiroHandler("hello", new RequestHandler() {
+            public void handleRequest(SekiroRequest sekiroRequest, SekiroResponse sekiroResponse) {
+                JSONObject jsonObject = sekiroRequest.getRequestJSONObject();
+                jsonObject.put("hello", "i com from java");
+                sekiroResponse.send(jsonObject);
+            }
+        });
+    }
+}
+```
 ### [3. android接入](https://github.com/crazyxw/SekiroWebsocketClientApp)
 
 android和java有些类似,只需要将[sekiro-api](https://github.com/crazyxw/SekiroWebSocketDemo/releases/tag/1.1.0) 引入到项目中即可
