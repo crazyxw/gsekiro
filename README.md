@@ -14,6 +14,11 @@ $ go run *.go
 浏览器打开 http://127.0.0.1:5612/jsDemo  
 你将会在控制台看到client连接信息  
 
+### [2.Java项目接入](https://github.com/crazyxw/SekiroWebSocketDemo)
+
+### [3. android接入](https://github.com/crazyxw/SekiroWebsocketClientApp)
+
+android和java有些类似,只需要将[sekiro-api](https://github.com/crazyxw/SekiroWebSocketDemo/releases/tag/1.1.0) 引入到项目中即可
 
 ## 主动调用
 打开一个新的浏览器窗口,访问  
