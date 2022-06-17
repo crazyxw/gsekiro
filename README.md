@@ -32,7 +32,7 @@ public class QuickStart {
 ```
 ### [3. android接入](https://github.com/crazyxw/SekiroWebsocketClientApp)
 
-android和java有些类似,只需要将[sekiro-api](https://github.com/crazyxw/SekiroWebSocketDemo/releases/tag/1.1.0) 引入到项目中即可
+android和java有些类似,只需要将[sekiro-api](https://github.com/crazyxw/SekiroWebSocketDemo/releases) 引入到项目中即可
 
 ## 主动调用
 打开一个新的浏览器窗口,访问  
