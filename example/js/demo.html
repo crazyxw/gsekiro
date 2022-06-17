@@ -33,6 +33,7 @@
             this.wsURL = wsURL;
             this.handlers = {};
             this.socket = {};
+            this.is_register = false;
             // check
             if (!wsURL) {
                 throw new Error('wsURL can not be empty!!')
@@ -126,6 +127,9 @@
             });
 
             this.socket.onclose(function (event) {
+                if (_this.is_register){
+                    return;
+                }
                 console.log('sekiro: disconnected ,reconnection after 2s');
                 setTimeout(function () {
                     _this.connect()
@@ -138,6 +142,13 @@
             var request = JSON.parse(requestJson);
             var seq = request['__sekiro_seq__'];
 
+            if (!seq){
+                var code = request['code'];
+                if (code === 1){
+                    this.is_register = true;
+                }
+                return;
+            }
             if (!request['action']) {
                 this.sendFailed(seq, 'need request param {action}');
                 return
@@ -236,7 +247,7 @@
             }
             return (S4() + S4() + "-" + S4() + "-" + S4() + "-" + S4() + "-" + S4() + S4() + S4());
         }
-        var client = new SekiroClient("ws://127.0.0.1:5612/api/register?vkey=test&group=aaa&clientId="+guid());
+        var client = new SekiroClient("ws://127.0.0.1:5612/api/register?vkey=test&group=aaa&clientId=aaa");
         client.registerAction("clientTime", function (request, resolve, reject) {
             resolve("SekiroTest：" + new Date());
         });

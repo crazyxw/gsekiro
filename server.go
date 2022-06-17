@@ -70,10 +70,14 @@ func register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !group.addClient(conn, clientId) {
+		resp := Response{Code: 1, Msg: "设备id已注册"}
+		conn.WriteMessage(websocket.TextMessage, resp.toJson())
 		conn.Close()
 		log.Printf("设备id已注册, group:group:%s clientId: %s \n", groupId, clientId)
 		return
 	}
+	resp := Response{Code: 0, Msg: "注册成功"}
+	conn.WriteMessage(websocket.TextMessage, resp.toJson())
 	log.Printf("注册成功: group:%s clientId: %s \n", groupId, clientId)
 	for {
 		_, message, err := conn.ReadMessage()
@@ -146,10 +150,10 @@ func invoke(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	group, ok := groupMap[groupId]
-	rMap := map[string]string{}
+	res := Response{Code: 1}
 	if ok {
 		if len(group.clients) == 0 {
-			rMap["msg"] = "no device online"
+			res.Msg = "no device online"
 		} else {
 			if clientId == "" {
 				clientId = group.getClient()
@@ -173,20 +177,20 @@ func invoke(w http.ResponseWriter, r *http.Request) {
 						w.Write(msg)
 						return
 					case <-time.After(time.Second * time.Duration(invokeTimeout)):
-						rMap["msg"] = "调用超时"
+						res.Msg = "调用超时"
 					}
 				} else {
-					rMap["msg"] = "请检查action是否正确"
+					res.Msg = "请检查action是否正确"
 				}
 			} else {
-				rMap["msg"] = "没有这个client"
+				res.Msg = "没有这个client"
 			}
 		}
 
 	} else {
-		rMap["msg"] = "请检查groupId是否正确"
+		res.Msg = "请检查groupId是否正确"
 	}
-	w.Write([]byte(MapToJson(rMap)))
+	w.Write(res.toJson())
 }
 
 func jsDemo(w http.ResponseWriter, r *http.Request) {
@@ -212,6 +216,7 @@ func main() {
 		Addr:    config.Web.Port,
 		Handler: mux,
 	}
+	log.Printf("gsekiro is running. http://0.0.0.0%s", config.Web.Port)
 	err := server.ListenAndServe()
 	if err != nil {
 		panic(err)
