@@ -177,6 +177,7 @@ func invoke(w http.ResponseWriter, r *http.Request) {
 						w.Write(msg)
 						return
 					case <-time.After(time.Second * time.Duration(invokeTimeout)):
+						cl.channelMap.Delete(req_id)
 						res.Msg = "调用超时"
 					}
 				} else {
