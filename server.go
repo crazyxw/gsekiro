@@ -165,9 +165,10 @@ func invoke(w http.ResponseWriter, r *http.Request) {
 					req_chan := make(chan []byte, 1)
 					cl.channelMap.Store(req_id, req_chan)
 					reqMap := map[string]string{}
-					reqMap["__sekiro_seq__"] = req_id
 					parseValues(reqMap, r.URL.Query())
 					parseValues(reqMap, r.Form)
+					parseValues(reqMap, r.PostForm)
+					reqMap["__sekiro_seq__"] = req_id
 					cl.rwLock.Lock()
 					cl.conn.WriteMessage(websocket.TextMessage, []byte(MapToJson(reqMap)))
 					cl.rwLock.Unlock()
