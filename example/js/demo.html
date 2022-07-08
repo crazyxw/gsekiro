@@ -137,18 +137,34 @@
             });
         };
 
-        SekiroClient.prototype.handleSekiroRequest = function (requestJson) {
+        SekiroClient.prototype.handleSekiroRequest = function (requestData) {
+
+            var msgType = requestData.substring(0, 1);
+            var body = requestData.substring(1);
+            switch (msgType) {
+                case "0":
+                    this.handleSystemMsg(body);
+                    break;
+                case "1":
+                    this.handlerUserMsg(body);
+                    break;
+                default:
+                    console.log("未知的消息类型.");
+            }
+        };
+
+        SekiroClient.prototype.handleSystemMsg = function (msg){
+            var request = JSON.parse(msg);
+            if (request["code"] === 1){
+                this.is_register = true;
+            }
+        }
+
+        SekiroClient.prototype.handlerUserMsg = function (msg){
+            var seq = msg.substring(0, 36);
+            var requestJson = msg.substring(36);
             console.log("receive sekiro request: " + requestJson);
             var request = JSON.parse(requestJson);
-            var seq = request['__sekiro_seq__'];
-
-            if (!seq){
-                var code = request['code'];
-                if (code === 1){
-                    this.is_register = true;
-                }
-                return;
-            }
             if (!request['action']) {
                 this.sendFailed(seq, 'need request param {action}');
                 return
@@ -158,7 +174,6 @@
                 this.sendFailed(seq, 'no action handler: ' + action + ' defined');
                 return
             }
-
             var theHandler = this.handlers[action];
             var _this = this;
             try {
@@ -175,7 +190,8 @@
                 console.log("error: " + e);
                 _this.sendFailed(seq, ":" + e);
             }
-        };
+
+        }
 
         SekiroClient.prototype.sendSuccess = function (seq, response) {
             var responseJson;
@@ -208,10 +224,10 @@
             } else {
                 responseJson['status'] = 0;
             }
-            responseJson['__sekiro_seq__'] = seq;
+            // responseJson['__sekiro_seq__'] = seq;
             var responseText = JSON.stringify(responseJson);
             console.log("response :" + responseText);
-            this.socket.send(responseText);
+            this.socket.send(seq+responseText);
         };
 
         SekiroClient.prototype.sendFailed = function (seq, errorMessage) {
@@ -221,10 +237,10 @@
             var responseJson = {};
             responseJson['message'] = errorMessage;
             responseJson['status'] = -1;
-            responseJson['__sekiro_seq__'] = seq;
+            // responseJson['__sekiro_seq__'] = seq;
             var responseText = JSON.stringify(responseJson);
             console.log("sekiro: response :" + responseText);
-            this.socket.send(responseText)
+            this.socket.send(seq + responseText)
         };
 
         SekiroClient.prototype.registerAction = function (action, handler) {
@@ -248,8 +264,8 @@
             return (S4() + S4() + "-" + S4() + "-" + S4() + "-" + S4() + "-" + S4() + S4() + S4());
         }
         var client = new SekiroClient("ws://127.0.0.1:5612/api/register?vkey=test&group=aaa&clientId=aaa");
-        client.registerAction("clientTime", function (request, resolve, reject) {
-            resolve("SekiroTest：" + new Date());
+        client.registerAction("hello", function (request, resolve, reject) {
+            resolve("SekiroTest：i am from js");
         });
     </script>
 </head>
