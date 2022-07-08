@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"github.com/gorilla/websocket"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"io"
@@ -45,8 +44,15 @@ var UP = websocket.Upgrader{
 	//},
 }
 
-type SekiroRequest struct {
-	ReqId string `json:"__sekiro_seq__"`
+type Msg struct {
+	Type  string
+	ReqId string
+	Body  []byte
+}
+
+func (this *Msg) toBytes() []byte {
+	head := []byte(this.Type + this.ReqId)
+	return append(head, this.Body...)
 }
 
 var groupMap = map[string]*Group{}
@@ -68,16 +74,20 @@ func register(w http.ResponseWriter, r *http.Request) {
 		group = &Group{}
 		groupMap[groupId] = group
 	}
-
+	msg := Msg{
+		Type: "0",
+	}
 	if !group.addClient(conn, clientId) {
 		resp := Response{Code: 1, Msg: "设备id已注册"}
-		conn.WriteMessage(websocket.TextMessage, resp.toJson())
+		msg.Body = resp.toJson()
+		conn.WriteMessage(websocket.TextMessage, msg.toBytes())
 		conn.Close()
 		log.Printf("设备id已注册, group:group:%s clientId: %s \n", groupId, clientId)
 		return
 	}
 	resp := Response{Code: 0, Msg: "注册成功"}
-	conn.WriteMessage(websocket.TextMessage, resp.toJson())
+	msg.Body = resp.toJson()
+	conn.WriteMessage(websocket.TextMessage, msg.toBytes())
 	log.Printf("注册成功: group:%s clientId: %s \n", groupId, clientId)
 	for {
 		_, message, err := conn.ReadMessage()
@@ -85,19 +95,15 @@ func register(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		log.Printf("group:%s clientId %s recv:%s \n", groupId, clientId, string(message))
-		var sreq SekiroRequest
-		parseErr := json.Unmarshal(message, &sreq)
-		if parseErr != nil {
-			continue
-		}
-		if sreq.ReqId != "" {
-			if reqChan, ok := group.clientMap[clientId].channelMap.LoadAndDelete(sreq.ReqId); ok {
+		reqId := string(message[:36])
+		if reqId != "" {
+			if reqChan, ok := group.clientMap[clientId].channelMap.LoadAndDelete(reqId); ok {
 				chain, ok := reqChan.(chan []byte)
 				if ok {
-					chain <- message
+					chain <- message[36:]
 				}
 			} else {
-				log.Println("没有找到此reqId:" + sreq.ReqId)
+				log.Println("没有找到此reqId:" + reqId)
 			}
 		}
 	}
@@ -136,12 +142,38 @@ func getClients(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type Params map[string]string
+
+func (p Params) getAndDelete(key string) string {
+	if value, ok := p[key]; ok {
+		delete(p, key)
+		return value
+	}
+	return ""
+}
+
+func (p Params) get(key string) string {
+	if value, ok := p[key]; ok {
+		return value
+	}
+	return ""
+}
+
+func getRequestParams(r *http.Request) Params {
+	reqParams := Params{}
+	parseValues(reqParams, r.URL.Query())
+	parseValues(reqParams, r.Form)
+	parseValues(reqParams, r.PostForm)
+	return reqParams
+}
+
 func invoke(w http.ResponseWriter, r *http.Request) {
-	params := r.URL.Query()
-	action := params.Get("action")
-	groupId := params.Get("group")
-	clientId := params.Get("clientId")
-	invokeTimeoutStr := params.Get("invoke_timeout")
+	params := getRequestParams(r)
+	invokeTimeoutStr := params.getAndDelete("invoke_timeout")
+	groupId := params.get("group")
+	clientId := params.get(params["client"])
+	action := params.get("action")
+	delete(params, "vkey")
 	var invokeTimeout int = defaultInvokeTimeout
 	if invokeTimeoutStr != "" {
 		ret, err := strconv.Atoi(invokeTimeoutStr)
@@ -164,12 +196,9 @@ func invoke(w http.ResponseWriter, r *http.Request) {
 					req_id := getUuid()
 					req_chan := make(chan []byte, 1)
 					cl.channelMap.Store(req_id, req_chan)
-					reqMap := map[string]string{}
-					reqMap["__sekiro_seq__"] = req_id
-					parseValues(reqMap, r.URL.Query())
-					parseValues(reqMap, r.Form)
 					cl.rwLock.Lock()
-					cl.conn.WriteMessage(websocket.TextMessage, []byte(MapToJson(reqMap)))
+					_msg := Msg{"1", req_id, []byte(MapToJson(params))}
+					cl.conn.WriteMessage(websocket.TextMessage, _msg.toBytes())
 					cl.rwLock.Unlock()
 
 					select {
@@ -177,6 +206,7 @@ func invoke(w http.ResponseWriter, r *http.Request) {
 						w.Write(msg)
 						return
 					case <-time.After(time.Second * time.Duration(invokeTimeout)):
+						cl.channelMap.Delete(req_id)
 						res.Msg = "调用超时"
 					}
 				} else {
